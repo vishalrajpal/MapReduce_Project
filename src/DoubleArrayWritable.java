@@ -42,9 +42,12 @@ public class DoubleArrayWritable extends ArrayWritable
    {
       StringBuilder res = new StringBuilder();
       Writable[] arr = super.get();
-      
-      for(int i = 0; i<arr.length; i++) {
-         res.append(arr[i]+" ");
+      int arrLen = arr.length;
+      for(int i = 0; i<arrLen; i++) {
+         res.append(arr[i]);
+         if(i != arrLen - 1) {
+            res.append(",");
+         }
       }
       return res.toString();
    }

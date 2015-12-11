@@ -2,12 +2,30 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
 
 public class URLReputationDecideMapper extends Mapper<Object, Text, Text, Text>
 {
+   private static double bias;
+   private static DoubleWritable[] weights;
+   
+   @Override
+   protected void setup(Mapper<Object, Text, Text, Text>.Context context) throws IOException, InterruptedException
+   {
+      String str = context.getConfiguration().get("weights");
+      String[] strWeights = str.split(",");
+      //List<Double> weightVector = URLReputationClassifier.getOldWeightVector(); 
+      int oldWeightSize = strWeights.length;
+      weights = new DoubleWritable[oldWeightSize];
+      for(int count = 0; count<oldWeightSize; count++) {
+         weights[count] = new DoubleWritable(Double.parseDouble(strWeights[count]));
+      }
+      bias = Double.parseDouble(context.getConfiguration().get("bias"));
+   }
+
    @Override
    protected void map(Object key, Text value, Context context) throws IOException,InterruptedException
    {
@@ -57,7 +75,7 @@ public class URLReputationDecideMapper extends Mapper<Object, Text, Text, Text>
    }
    
    private static double getSigmoidFunctionValue(Map<Integer, Double> featureVector) {
-      double e = Math.exp(-getWeightTX(featureVector) - URLReputationClassifier.oldBias);
+      double e = Math.exp(-getWeightTX(featureVector) - bias);
       double t = 1.0;
       double res1 = t + e;
       double res = 1.0/res1;
@@ -68,7 +86,7 @@ public class URLReputationDecideMapper extends Mapper<Object, Text, Text, Text>
       double result = 0;
       double currentWeight;
       for(Integer wordIndex: featureVector.keySet()) {
-         currentWeight = URLReputationClassifier.oldWeightVector.get(wordIndex);         
+         currentWeight = weights[wordIndex].get();         
          result = result + currentWeight;
       }
       return result;

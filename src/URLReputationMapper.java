@@ -20,13 +20,16 @@ public class URLReputationMapper extends Mapper<Object, Text, DoubleWritable, Do
    protected void setup(Context context) throws IOException, InterruptedException
    {
       instances = new ArrayList<>();
-      List<Double> weightVector = URLReputationClassifier.getOldWeightVector(); 
-      int oldWeightSize = weightVector.size();
+      String str = context.getConfiguration().get("weights");
+      String[] strWeights = str.split(",");
+      //List<Double> weightVector = URLReputationClassifier.getOldWeightVector(); 
+      int oldWeightSize = strWeights.length;
       weights = new DoubleWritable[oldWeightSize];
       for(int count = 0; count<oldWeightSize; count++) {
-         weights[count] = new DoubleWritable(weightVector.get(count));
+         weights[count] = new DoubleWritable(Double.parseDouble(strWeights[count]));
       }
-      bias = URLReputationClassifier.getOldBias();
+      bias = Double.parseDouble(context.getConfiguration().get("bias"));
+      //bias = URLReputationClassifier.getOldBias();
       learningRate = 0.5;
    }
 
@@ -54,7 +57,7 @@ public class URLReputationMapper extends Mapper<Object, Text, DoubleWritable, Do
          delta = randomInstance.getLabel() - sigmoidFunctionValue;
          addDeltaToWeightsVector(delta, currentFeatureVector);
       }
-      normalizeWeights();
+      //normalizeWeights();
       DoubleArrayWritable a = new DoubleArrayWritable(weights);
       context.write(new DoubleWritable(bias), a);
    }
@@ -85,22 +88,5 @@ public class URLReputationMapper extends Mapper<Object, Text, DoubleWritable, Do
          key = feature.getKey();
          weights[key].set(weights[key].get() + (prod * feature.getValue()));
       }
-   }
-   
-   private void normalizeWeights() {
-      Double sum = bias;
-      for(DoubleWritable weight : weights) {
-         sum += weight.get();
-      }
-      if(sum==0.0) {
-         return;
-      }
-      bias = bias/sum;
-      Double val;
-      int noOfAttributes = weights.length;
-      for(int weightCounter = 0; weightCounter<noOfAttributes; weightCounter++) {
-         val = weights[weightCounter].get()/sum;
-         weights[weightCounter].set(val);
-      }
-   }
+   }   
 }

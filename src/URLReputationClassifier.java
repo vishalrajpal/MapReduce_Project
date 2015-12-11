@@ -1,7 +1,7 @@
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -15,26 +15,39 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class URLReputationClassifier
 {
-   protected static List<Double> oldWeightVector;
-   protected static double oldBias;
-   
-   public static List<Double> getOldWeightVector() {
-      return oldWeightVector;
-   }
-
-   public static double getOldBias() {
-      return oldBias;
-   }
-   
-   private static void train(String[] args) {
+   private static Configuration train(String[] args) {
+      Configuration previous = new Configuration();
+      
       try
       {
+         Job previousJob = new Job();
          int noOfWords = 3231961;
-         oldWeightVector = new ArrayList<Double>(Collections.nCopies(noOfWords, (double)0.0));
-         oldBias = 0.0;
+         String dtr = ",0.0";
+         StringBuilder sb = new StringBuilder("0.0");
+         for(int i = 0; i<noOfWords; i++) {
+            sb.append(dtr);
+         }
+         
          for(int i = 1; i<=10; i++) {
             Configuration conf = new Configuration();
+            if(i==1) {
+               conf.set("weights", sb.toString());
+               conf.set("bias", "0.0");
+            }
+            else {
+               File file = new File(args[2]+(i-1)+"/part-r-00000");
+               FileReader reader = new FileReader(file);
+               BufferedReader brReader = new BufferedReader(reader);
+               String[] line = brReader.readLine().split("\\t");
+               String weights = line[1];
+               String bias = line[0];
+               conf.set("weights", weights);
+               conf.set("bias", bias);
+            }
+            previous = conf;
+            
             Job job = new Job(conf, "URLReputation");
+            previousJob = job;
             job.setJarByClass(URLReputationClassifier.class);
             job.setMapperClass(URLReputationMapper.class);
             job.setMapOutputKeyClass(DoubleWritable.class);
@@ -43,13 +56,16 @@ public class URLReputationClassifier
             job.setOutputKeyClass(DoubleWritable.class);
             job.setOutputValueClass(DoubleArrayWritable.class);
             job.setNumReduceTasks(1);
+            
             FileInputFormat.addInputPath(job, new Path(args[0]));
             FileOutputFormat.setOutputPath(job, new Path(args[2]+i));
+
             if(!job.waitForCompletion(true)) {
                System.exit(1);
             } else {
                System.out.println(i);              
             }
+
          }
       }
       catch (Exception e)
@@ -57,14 +73,23 @@ public class URLReputationClassifier
          System.out.print("Unable to train");
          e.printStackTrace();
       }
+      return previous;
    }
    
-   public static void predict(String[] args) {
+   public static void predict(String[] args, Configuration mapperConf) {
       System.out.println("In predict");
       //normalizeWeights();
       try
       {
          Configuration conf = new Configuration();
+         File file = new File(args[2]+"10/part-r-00000");
+         FileReader reader = new FileReader(file);
+         BufferedReader brReader = new BufferedReader(reader);
+         String[] line = brReader.readLine().split("\\t");
+         String weights = line[1];
+         String bias = line[0];
+         conf.set("weights", weights);
+         conf.set("bias", bias);
          Job job = new Job(conf, "URLReputationPrediction");
          job.setJarByClass(URLReputationClassifier.class);
          job.setMapperClass(URLReputationDecideMapper.class);
@@ -152,7 +177,7 @@ public class URLReputationClassifier
    }
    
    public static void main(String[] args) {
-      train(args);
-      predict(args);
+      Configuration conf = train(args);
+      predict(args, conf);
    }
 }

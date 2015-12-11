@@ -6,6 +6,8 @@ import java.util.List;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
+import com.google.common.base.Strings;
+
 public class URLReputationReducer extends Reducer<DoubleWritable, DoubleArrayWritable, DoubleWritable, DoubleArrayWritable>
 {
    private double outputBias;
@@ -14,11 +16,13 @@ public class URLReputationReducer extends Reducer<DoubleWritable, DoubleArrayWri
    @Override
    protected void setup(Context context) throws IOException, InterruptedException
    {
-      List<Double> weightVector = URLReputationClassifier.getOldWeightVector(); 
-      int oldWeightSize = weightVector.size();
+      String str = context.getConfiguration().get("weights");
+      String[] strWeights = str.split(",");
+      //List<Double> weightVector = URLReputationClassifier.getOldWeightVector(); 
+      int oldWeightSize = strWeights.length;
       outputWeight = new DoubleWritable[oldWeightSize];
       for(int count = 0; count<oldWeightSize; count++) {
-         outputWeight[count] = new DoubleWritable(weightVector.get(count));
+         outputWeight[count] = new DoubleWritable(Double.parseDouble(strWeights[count]));
       }
    }
 
@@ -41,6 +45,7 @@ public class URLReputationReducer extends Reducer<DoubleWritable, DoubleArrayWri
       int splitLen = outputWeight.length;
       double sum = outputBias;
       double val;
+      StringBuilder sb = new StringBuilder();
       for(int counter = 0; counter<splitLen; counter++) {
           sum = sum + outputWeight[counter].get();
       }
@@ -48,11 +53,17 @@ public class URLReputationReducer extends Reducer<DoubleWritable, DoubleArrayWri
       for(int counter = 0; counter<splitLen; counter++) {
          val = outputWeight[counter].get()/sum;
          outputWeight[counter].set(val);
-         URLReputationClassifier.oldWeightVector.set(counter, URLReputationClassifier.oldWeightVector.get(counter) + val);
+         sb.append(val);
+         if(counter != splitLen - 1) {
+            sb.append(",");
+         }
+         //URLReputationClassifier.oldWeightVector.set(counter, URLReputationClassifier.oldWeightVector.get(counter) + val);
       }
       outputBias = outputBias/sum;
-      URLReputationClassifier.oldBias = outputBias;
-      DoubleArrayWritable a = new DoubleArrayWritable(outputWeight);         
+      //URLReputationClassifier.oldBias = outputBias;
+      DoubleArrayWritable a = new DoubleArrayWritable(outputWeight);   
+      context.getConfiguration().set("weights", sb.toString());
+      context.getConfiguration().set("bias", String.valueOf(outputBias));
       context.write(new DoubleWritable(outputBias), a);
    }
    

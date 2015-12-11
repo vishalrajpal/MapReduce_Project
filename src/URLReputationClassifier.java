@@ -15,6 +15,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class URLReputationClassifier
 {
+   
+   
    private static Configuration train(String[] args) {
       Configuration previous = new Configuration();
       
@@ -35,10 +37,11 @@ public class URLReputationClassifier
                conf.set("bias", "0.0");
             }
             else {
-               File file = new File(args[2]+(i-1)+"/part-r-00000");
+               /*File file = new File(args[2]+(i-1)+"/part-r-00000");
                FileReader reader = new FileReader(file);
-               BufferedReader brReader = new BufferedReader(reader);
-               String[] line = brReader.readLine().split("\\t");
+               BufferedReader brReader = new BufferedReader(reader);*/
+               String readLine = AccessReducerOutput.readFile("ProjOutput/testOutput"+(i-1)+"/part-r-00000");
+               String[] line = readLine.split("\\t");
                String weights = line[1];
                String bias = line[0];
                conf.set("weights", weights);
@@ -82,10 +85,11 @@ public class URLReputationClassifier
       try
       {
          Configuration conf = new Configuration();
-         File file = new File(args[2]+"10/part-r-00000");
+         /*File file = new File(args[2]+"10/part-r-00000");
          FileReader reader = new FileReader(file);
-         BufferedReader brReader = new BufferedReader(reader);
-         String[] line = brReader.readLine().split("\\t");
+         BufferedReader brReader = new BufferedReader(reader);*/
+         String readLine = AccessReducerOutput.readFile("ProjOutput/testOutput10/part-r-00000");
+         String[] line = readLine.split("\\t");
          String weights = line[1];
          String bias = line[0];
          conf.set("weights", weights);
@@ -126,57 +130,10 @@ public class URLReputationClassifier
          System.out.print("Unable to predict");
          e.printStackTrace();
       }
-      
-      
-      /*List<String> predictions = new ArrayList<String>();
-      try {
-         Reader reader = new FileReader(args[1]);
-         BufferedReader bufferedReader = new BufferedReader(reader);
-         FileWriter writer = new FileWriter("labels.txt");
-         String line;
-         String[] split;
-         String[] featureWeightSplit;
-         Map<Integer, Double> featureVector;
-         double sigmoidValue;
-         int splitLen;
-         int mistakes = 0;
-         int testingDataSize = 0;
-         String predictedLabel;
-         while((line = bufferedReader.readLine()) != null) {
-            featureVector = new HashMap<Integer, Double>();
-            split = line.split(" ");
-            splitLen = split.length;
-            writer.write(split[0]+"\n");
-            testingDataSize++;
-            for(int i = 1; i<splitLen; i++) {
-               featureWeightSplit = split[i].split(":");
-               featureVector.put(Integer.parseInt(featureWeightSplit[0]), Double.parseDouble(featureWeightSplit[1]));
-            }
-            sigmoidValue = getSigmoidFunctionValue(featureVector);
-            System.out.println(sigmoidValue);
-            if(sigmoidValue >=0.5) {
-               predictedLabel = "+1";
-            } else {
-               predictedLabel = "-1";
-            }
-            if(!split[0].equals(predictedLabel)) {
-               mistakes++;
-            }
-            predictions.add(predictedLabel);
-         }
-         System.out.println("No Of Mistakes"+mistakes);
-         double accuracy = (double)(testingDataSize - mistakes)/testingDataSize;
-         System.out.println("Accuracy:"+accuracy);
-         bufferedReader.close();
-         writer.close();
-      } catch (Exception e) {
-         System.out.println("Cant read testing data!");
-         System.exit(1);
-      }
-      return predictions;*/
    }
    
    public static void main(String[] args) {
+      //AccessReducerOutput.readFile();
       Configuration conf = train(args);
       predict(args, conf);
    }
